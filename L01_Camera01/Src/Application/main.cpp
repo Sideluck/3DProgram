@@ -63,38 +63,42 @@ void Application::PreUpdate()
 // アプリケーション更新
 // ///// ///// ///// ///// ///// ///// ///// ///// ///// ///// ///// ///// ///// ///// /////
 void Application::Update()
-{
-	/*if (GetAsyncKeyState('Q') & 0x8000)
-	{
-		_zPos++;
-	}
-
-	if (GetAsyncKeyState('E') & 0x8000)
-	{
-		_zPos--;
-	}*/
-
-	p+=5;
-
-	if (p > 90)
-	{
-		p = 90;
-	}
-
+{	
 	//カメラ行列の更新
 	{
+		//ハム太郎の更新
+		p++;
+		Math::Vector3  moveVec = Math::Vector3::Zero;
+
 		//大きさ
 		Math::Matrix _mScale = Math::Matrix::CreateScale(1);
 
-		//基準点(ターゲット)からどれだけ離れているか
-		Math::Matrix _mLocalPos = Math::Matrix::CreateTranslation(0, 0.1, 0);
-
 		//どれだけ傾いているか
-		Math::Matrix _mRotation = Math::Matrix::CreateRotationZ(DirectX::XMConvertToRadians(p));
+		Math::Matrix _mRotationX = Math::Matrix::CreateRotationX(DirectX::XMConvertToRadians(35));
 
-		//カメラのワールド行列を作成し、適応させる
-		Math::Matrix _mWorld = _mScale * _mRotation * _mLocalPos;
+		Math::Matrix _mRotationY = Math::Matrix::CreateRotationY(DirectX::XMConvertToRadians(p));
+		//基準点(ターゲット)からどれだけ離れているか
+		Math::Matrix _mTransPos = Math::Matrix::CreateTranslation(0, 3, -5);
+
+		//カメラのワールド行列を作成し、適応させる(行列の親子関係)
+		Math::Matrix _mWorld = _mScale  * _mRotationX  *_mTransPos *_mRotationY * m_HamuWorld;		//カメラが中心に移動する
 		m_spCamera->SetCameraMatrix(_mWorld);
+
+		float moveSpd = 0.05f;
+		Math::Vector3  nowPos = m_HamuWorld.Translation();
+
+		//ベクトル(方向ベクトル)=必ず「長さ(力)」が1でなければならない
+		if (GetAsyncKeyState('W') & 0x8000)moveVec.z = 1.0f;
+		if (GetAsyncKeyState('A') & 0x8000)moveVec.x = -1.0f;
+		if (GetAsyncKeyState('S') & 0x8000)moveVec.z = -1.0f;
+		if (GetAsyncKeyState('D') & 0x8000)moveVec.x = 1.0f;
+
+		moveVec.Normalize();//1に固定する関数
+		moveVec *= moveSpd;
+		nowPos += moveVec;
+		
+		//キャラクターのワールド行列
+		m_HamuWorld = Math::Matrix::CreateTranslation(nowPos);
 	}
 }
 
@@ -152,11 +156,7 @@ void Application::Draw()
 	// 陰影のあるオブジェクト(不透明な物体や2Dキャラ)はBeginとEndの間にまとめてDrawする
 	KdShaderManager::Instance().m_StandardShader.BeginLit();
 	{
-		//static float _zPos = 5;
-		//Math::Matrix _mat = Math::Matrix::CreateTranslation(0, 0, _zPos);
-		//_zPos += 0.01f;
-		Math::Matrix _mat = Math::Matrix::CreateTranslation(0, 0, 5);
-		KdShaderManager::Instance().m_StandardShader.DrawPolygon(*m_spPoly, _mat);
+		KdShaderManager::Instance().m_StandardShader.DrawPolygon(*m_spPoly, m_HamuWorld);
 
 		KdShaderManager::Instance().m_StandardShader.DrawModel(*m_spModel);
 	}
